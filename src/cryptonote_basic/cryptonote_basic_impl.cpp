@@ -86,7 +86,7 @@ namespace cryptonote {
     return CRYPTONOTE_MAX_TX_SIZE;
   }
   //-----------------------------------------------------------------------------------------------
-  bool get_block_reward(size_t median_size, size_t current_block_size, uint64_t already_generated_coins, uint64_t &reward, uint8_t version) {
+  bool get_block_reward(size_t median_size, size_t current_block_size, uint64_t already_generated_coins, uint64_t &reward, uint8_t version, uint64_t height) {
     static_assert(DIFFICULTY_TARGET_V2%60==0&&DIFFICULTY_TARGET_V1%60==0,"difficulty targets must be a multiple of 60");
     const int target = version < 2 ? DIFFICULTY_TARGET_V1 : DIFFICULTY_TARGET_V2;
     const int target_minutes = target / 60;
@@ -103,6 +103,12 @@ namespace cryptonote {
     //make it soft
     if (median_size < full_reward_zone) {
       median_size = full_reward_zone;
+    }
+
+    //hard-fork split coinbase
+    if (height == HARD_FORK_SPLIT_HEIGHT) {
+      reward = DEV_REWARD;
+      return true;
     }
 
     if (current_block_size <= median_size) {

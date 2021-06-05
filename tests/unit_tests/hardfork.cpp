@@ -112,7 +112,7 @@ public:
   virtual bool for_all_outputs(std::function<bool(uint64_t amount, const crypto::hash &tx_hash, uint64_t height, size_t tx_idx)> f) const { return true; }
   virtual bool for_all_outputs(uint64_t amount, const std::function<bool(uint64_t height)> &f) const { return true; }
   virtual bool is_read_only() const { return false; }
-  virtual std::map<uint64_t, std::tuple<uint64_t, uint64_t, uint64_t>> get_output_histogram(const std::vector<uint64_t> &amounts, bool unlocked, uint64_t recent_cutoff) const { return std::map<uint64_t, std::tuple<uint64_t, uint64_t, uint64_t>>(); }
+  virtual std::map<uint64_t, std::tuple<uint64_t, uint64_t, uint64_t>> get_output_histogram(const std::vector<uint64_t> &amounts, bool unlocked, uint64_t recent_cutoff, uint64_t min_count) const { return std::map<uint64_t, std::tuple<uint64_t, uint64_t, uint64_t>>(); }
 
   virtual void add_txpool_tx(const transaction &tx, const txpool_tx_meta_t& details) {}
   virtual void update_txpool_tx(const crypto::hash &txid, const txpool_tx_meta_t& details) {}
@@ -227,6 +227,27 @@ TEST(ordering, Success)
   ASSERT_TRUE(hf.add_fork(3, 10, 2));
   ASSERT_TRUE(hf.add_fork(4, 20, 3));
   ASSERT_FALSE(hf.add_fork(5, 5, 4));
+}
+
+TEST(check_for_height, Success)
+{
+  TestDB db;
+  HardFork hf(db, 1, 0, 0, 0, 1, 0); // no voting
+   ASSERT_TRUE(hf.add_fork(1, 0, 0));
+  ASSERT_TRUE(hf.add_fork(2, 5, 1));
+  hf.init();
+   for (uint64_t h = 0; h <= 4; ++h) {
+    ASSERT_TRUE(hf.check_for_height(mkblock(1, 1), h));
+    ASSERT_FALSE(hf.check_for_height(mkblock(2, 2), h));  // block version is too high
+    db.add_block(mkblock(hf, h, 1), 0, 0, 0, crypto::hash());
+    ASSERT_TRUE(hf.add(db.get_block_from_height(h), h));
+  }
+   for (uint64_t h = 5; h <= 10; ++h) {
+    ASSERT_FALSE(hf.check_for_height(mkblock(1, 1), h));  // block version is too low
+    ASSERT_TRUE(hf.check_for_height(mkblock(2, 2), h));
+    db.add_block(mkblock(hf, h, 2), 0, 0, 0, crypto::hash());
+    ASSERT_TRUE(hf.add(db.get_block_from_height(h), h));
+  }
 }
 
 TEST(states, Success)

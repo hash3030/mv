@@ -205,12 +205,12 @@ t_command_server::t_command_server(
     m_command_lookup.set_handler(
       "start_save_graph"
     , std::bind(&t_command_parser_executor::start_save_graph, &m_parser, p::_1)
-    , "Start saving data for dr monero."
+    , "Start saving data for dr monerov."
     );
     m_command_lookup.set_handler(
       "stop_save_graph"
     , std::bind(&t_command_parser_executor::stop_save_graph, &m_parser, p::_1)
-    , "Stop saving data for dr monero."
+    , "Stop saving data for dr monerov."
     );
     m_command_lookup.set_handler(
       "hard_fork_info"
@@ -280,6 +280,11 @@ t_command_server::t_command_server(
     , std::bind(&t_command_parser_executor::sync_info, &m_parser, p::_1)
     , "Print information about the blockchain sync state."
     );
+    m_command_lookup.set_handler(
+      "version"
+    , std::bind(&t_command_parser_executor::version, &m_parser, p::_1)
+    , "Print version information."
+    );
 }
 
 bool t_command_server::process_command_str(const std::string& cmd)
@@ -329,7 +334,7 @@ bool t_command_server::help(const std::vector<std::string>& args)
 std::string t_command_server::get_commands_str()
 {
   std::stringstream ss;
-  ss << "Monero '" << MONERO_RELEASE_NAME << "' (v" << MONERO_VERSION_FULL << ")" << std::endl;
+  ss << "MoneroV '" << MONERO_RELEASE_NAME << "' (v" << MONERO_VERSION_FULL << ")" << std::endl;
   ss << "Commands: " << std::endl;
   std::string usage = m_command_lookup.get_usage();
   boost::replace_all(usage, "\n", "\n  ");

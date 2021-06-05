@@ -47,6 +47,7 @@ using namespace epee;
 static std::string generate_log_filename(const char *base)
 {
   std::string filename(base);
+  static unsigned int fallback_counter = 0;
   char tmp[200];
   struct tm tm;
   time_t now = time(NULL);
@@ -56,7 +57,7 @@ static std::string generate_log_filename(const char *base)
 #else
   (!gmtime_r(&now, &tm))
 #endif
-    strcpy(tmp, "unknown");
+    snprintf(tmp, sizeof(tmp), "part-%u", ++fallback_counter);
   else
     strftime(tmp, sizeof(tmp), "%Y-%m-%d-%H-%M-%S", &tm);
   tmp[sizeof(tmp) - 1] = 0;
@@ -121,7 +122,7 @@ void mlog_configure(const std::string &filename_base, bool console, const std::s
   el::Configurations c;
   c.setGlobally(el::ConfigurationType::Filename, filename_base);
   c.setGlobally(el::ConfigurationType::ToFile, "true");
-  const char *log_format = getenv("MONERO_LOG_FORMAT");
+  const char *log_format = getenv("MONEROV_LOG_FORMAT");
   if (!log_format)
     log_format = MLOG_BASE_FORMAT;
   c.setGlobally(el::ConfigurationType::Format, log_format);
@@ -139,7 +140,7 @@ void mlog_configure(const std::string &filename_base, bool console, const std::s
     rename(name, rname.c_str());
   });
   mlog_set_common_prefix();
-  const char *monero_log = getenv("MONERO_LOGS");
+  const char *monero_log = getenv("MONEROV_LOGS");
   if (!monero_log)
   {
     monero_log = get_default_categories(0);
@@ -202,7 +203,12 @@ void mlog_set_log(const char *log)
   long level;
   char *ptr = NULL;
 
-  level = strtoll(log, &ptr, 10);
+  if (!*log)
+  {
+    mlog_set_categories(log);
+    return;
+  }
+  level = strtol(log, &ptr, 10);
   if (ptr && *ptr)
   {
     // we can have a default level, eg, 2,foo:ERROR

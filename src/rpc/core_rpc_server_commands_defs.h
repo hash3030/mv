@@ -49,7 +49,7 @@ namespace cryptonote
 // advance which version they will stop working with
 // Don't go over 32767 for any of these
 #define CORE_RPC_VERSION_MAJOR 1
-#define CORE_RPC_VERSION_MINOR 19
+#define CORE_RPC_VERSION_MINOR 20
 #define MAKE_CORE_RPC_VERSION(major,minor) (((major)<<16)|(minor))
 #define CORE_RPC_VERSION MAKE_CORE_RPC_VERSION(CORE_RPC_VERSION_MAJOR, CORE_RPC_VERSION_MINOR)
 
@@ -563,10 +563,12 @@ namespace cryptonote
     {
       std::list<std::string> txs_hashes;
       bool decode_as_json;
+      bool prune;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(txs_hashes)
         KV_SERIALIZE(decode_as_json)
+        KV_SERIALIZE_OPT(prune, false)
       END_KV_SERIALIZE_MAP()
     };
 
@@ -937,6 +939,7 @@ namespace cryptonote
     {
       std::string status;
       uint64_t height;
+      uint64_t already_generated_coins;
       uint64_t target_height;
       uint64_t difficulty;
       uint64_t target;
@@ -966,6 +969,7 @@ namespace cryptonote
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(status)
         KV_SERIALIZE(height)
+        KV_SERIALIZE(already_generated_coins)
         KV_SERIALIZE(target_height)
         KV_SERIALIZE(difficulty)
         KV_SERIALIZE(target)
@@ -1163,6 +1167,7 @@ namespace cryptonote
       uint64_t reward;
       uint64_t block_size;
       uint64_t num_txes;
+      std::string pow_hash;
       
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(major_version)
@@ -1178,6 +1183,7 @@ namespace cryptonote
         KV_SERIALIZE(reward)
         KV_SERIALIZE(block_size)
         KV_SERIALIZE(num_txes)
+        KV_SERIALIZE(pow_hash)
       END_KV_SERIALIZE_MAP()
   };
 
@@ -1185,7 +1191,10 @@ namespace cryptonote
   {
     struct request
     {
+      bool fill_pow_hash;
+
       BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE_OPT(fill_pow_hash, false);
       END_KV_SERIALIZE_MAP()
     };
 
@@ -1209,9 +1218,11 @@ namespace cryptonote
     struct request
     {
       std::string hash;
+      bool fill_pow_hash;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(hash)
+        KV_SERIALIZE_OPT(fill_pow_hash, false);
       END_KV_SERIALIZE_MAP()
     };
 
@@ -1235,9 +1246,11 @@ namespace cryptonote
     struct request
     {
       uint64_t height;
+      bool fill_pow_hash;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(height)
+        KV_SERIALIZE_OPT(fill_pow_hash, false);
       END_KV_SERIALIZE_MAP()
     };
 
@@ -1262,10 +1275,12 @@ namespace cryptonote
     {
       std::string hash;
       uint64_t height;
+      bool fill_pow_hash;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(hash)
         KV_SERIALIZE(height)
+        KV_SERIALIZE_OPT(fill_pow_hash, false);
       END_KV_SERIALIZE_MAP()
     };
 
@@ -1618,10 +1633,12 @@ namespace cryptonote
     {
       uint64_t start_height;
       uint64_t end_height;
+      bool fill_pow_hash;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(start_height)
         KV_SERIALIZE(end_height)
+        KV_SERIALIZE_OPT(fill_pow_hash, false);
       END_KV_SERIALIZE_MAP()
     };
 
@@ -1687,7 +1704,7 @@ namespace cryptonote
     {
       std::string status;
       uint64_t limit_up;
-      uint64_t limit_down;
+      uint64_t limit_down; // all limits (for get and set) are kB/s
       bool untrusted;
       
       BEGIN_KV_SERIALIZE_MAP()
@@ -2210,11 +2227,13 @@ namespace cryptonote
     {
       std::vector<uint64_t> amounts;
       uint64_t from_height;
+      uint64_t to_height;
       bool cumulative;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(amounts)
         KV_SERIALIZE_OPT(from_height, (uint64_t)0)
+        KV_SERIALIZE_OPT(to_height, (uint64_t)0)
         KV_SERIALIZE_OPT(cumulative, false)
       END_KV_SERIALIZE_MAP()
     };

@@ -378,27 +378,20 @@ namespace nodetool
     std::set<std::string> full_addrs;
     if (nettype == cryptonote::TESTNET)
     {
-      full_addrs.insert("212.83.175.67:28080");
-      full_addrs.insert("5.9.100.248:28080");
-      full_addrs.insert("163.172.182.165:28080");
-      full_addrs.insert("195.154.123.123:28080");
-      full_addrs.insert("212.83.172.165:28080");
+
     }
     else if (nettype == cryptonote::STAGENET)
     {
-      full_addrs.insert("162.210.173.150:38080");
-      full_addrs.insert("162.210.173.151:38080");
+
     }
     else
     {
-      full_addrs.insert("107.152.130.98:18080");
-      full_addrs.insert("212.83.175.67:18080");
-      full_addrs.insert("5.9.100.248:18080");
-      full_addrs.insert("163.172.182.165:18080");
-      full_addrs.insert("161.67.132.39:18080");
-      full_addrs.insert("198.74.231.92:18080");
-      full_addrs.insert("195.154.123.123:18080");
-      full_addrs.insert("212.83.172.165:18080");
+      full_addrs.insert("52.47.191.174:19090");
+      full_addrs.insert("52.47.35.22:19090");
+      full_addrs.insert("167.99.17.77:19090");
+      full_addrs.insert("188.166.135.92:19090");
+      full_addrs.insert("188.166.203.4:19090");
+
     }
     return full_addrs;
   }
@@ -412,6 +405,7 @@ namespace nodetool
     bool res = handle_command_line(vm);
     CHECK_AND_ASSERT_MES(res, false, "Failed to handle command line");
 
+    m_fallback_seed_nodes_added = false;
     if (m_nettype == cryptonote::TESTNET)
     {
       memcpy(&m_network_id, &::config::testnet::NETWORK_ID, 16);
@@ -505,6 +499,7 @@ namespace nodetool
 
         for (const auto &peer: get_seed_nodes(cryptonote::MAINNET))
           full_addrs.insert(peer);
+        m_fallback_seed_nodes_added = true;
       }
     }
     }
@@ -919,7 +914,7 @@ namespace nodetool
     bool res = m_net_server.connect(epee::string_tools::get_ip_string_from_int32(ipv4.ip()),
       epee::string_tools::num_to_string_fast(ipv4.port()),
       m_config.m_net_config.connection_timeout,
-      con);
+      con, m_bind_ip.empty() ? "0.0.0.0" : m_bind_ip);
 
     if(!res)
     {
@@ -984,7 +979,7 @@ namespace nodetool
     bool res = m_net_server.connect(epee::string_tools::get_ip_string_from_int32(ipv4.ip()),
                                     epee::string_tools::num_to_string_fast(ipv4.port()),
                                     m_config.m_net_config.connection_timeout,
-                                    con);
+                                    con, m_bind_ip.empty() ? "0.0.0.0" : m_bind_ip);
 
     if (!res) {
       bool is_priority = is_priority_node(na);
@@ -1141,7 +1136,6 @@ namespace nodetool
 
       size_t try_count = 0;
       size_t current_index = crypto::rand<size_t>()%m_seed_nodes.size();
-      bool fallback_nodes_added = false;
       while(true)
       {
         if(m_net_server.is_stop_signal_sent())
@@ -1151,15 +1145,21 @@ namespace nodetool
           break;
         if(++try_count > m_seed_nodes.size())
         {
-          if (!fallback_nodes_added)
+          if (!m_fallback_seed_nodes_added)
           {
             MWARNING("Failed to connect to any of seed peers, trying fallback seeds");
+            current_index = m_seed_nodes.size();
             for (const auto &peer: get_seed_nodes(m_nettype))
             {
               MDEBUG("Fallback seed node: " << peer);
               append_net_address(m_seed_nodes, peer);
             }
-            fallback_nodes_added = true;
+            m_fallback_seed_nodes_added = true;
+            if (current_index == m_seed_nodes.size())
+            {
+              MWARNING("No fallback seeds, continuing without seeds");
+              break;
+            }
             // continue for another few cycles
           }
           else
@@ -1300,6 +1300,20 @@ namespace nodetool
     m_connections_maker_interval.do_call(boost::bind(&node_server<t_payload_net_handler>::connections_maker, this));
     m_gray_peerlist_housekeeping_interval.do_call(boost::bind(&node_server<t_payload_net_handler>::gray_peerlist_housekeeping, this));
     m_peerlist_store_interval.do_call(boost::bind(&node_server<t_payload_net_handler>::store_config, this));
+    m_incoming_connections_interval.do_call(boost::bind(&node_server<t_payload_net_handler>::check_incoming_connections, this));
+    return true;
+  }
+    //-----------------------------------------------------------------------------------
+  template<class t_payload_net_handler>
+  bool node_server<t_payload_net_handler>::check_incoming_connections()
+  {
+    if (m_offline || m_hide_my_port)
+      return true;
+    if (get_incoming_connections_count() == 0)
+    {
+      const el::Level level = el::Level::Warning;
+      MCLOG_RED(level, "global", "No incoming connections - check firewalls/routers allow port " << get_this_peer_port());
+    }
     return true;
   }
   //-----------------------------------------------------------------------------------
@@ -1580,7 +1594,7 @@ namespace nodetool
         return false;
       }
       return true;
-    });
+    }, m_bind_ip.empty() ? "0.0.0.0" : m_bind_ip);
     if(!r)
     {
       LOG_WARNING_CC(context, "Failed to call connect_async, network error.");

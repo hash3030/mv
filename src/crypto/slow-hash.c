@@ -244,7 +244,7 @@ STATIC INLINE int force_software_aes(void)
   if (use != -1)
     return use;
 
-  const char *env = getenv("MONERO_USE_SOFTWARE_AES");
+  const char *env = getenv("MONEROV_USE_SOFTWARE_AES");
   if (!env) {
     use = 0;
   }
@@ -524,7 +524,7 @@ void slow_hash_free_state(void)
     else
     {
 #if defined(_MSC_VER) || defined(__MINGW32__)
-        VirtualFree(hp_state, MEMORY, MEM_RELEASE);
+        VirtualFree(hp_state, 0, MEM_RELEASE);
 #else
         munmap(hp_state, MEMORY);
 #endif

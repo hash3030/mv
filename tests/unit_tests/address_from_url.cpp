@@ -37,6 +37,7 @@
 
 TEST(AddressFromTXT, Success)
 {
+  // TODO: add our own donation dns
   std::string addr = "46BeWrHpwXmHDpDEUmZBWZfoQpdc6HaERCNmx1pEYL2rAcuwufPN9rXHHtyUA4QVy66qeFQkn6sfK8aHYjA3jk3o1Bv16em";
 
   std::string txtr = "oa1:xmr";
